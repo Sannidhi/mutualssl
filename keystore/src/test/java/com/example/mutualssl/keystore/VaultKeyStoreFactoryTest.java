@@ -14,7 +14,7 @@ import static org.junit.Assert.*;
  * This is supposed to be integration tests. Require a vault dependency setup
  */
 
-@Ignore
+
 public class VaultKeyStoreFactoryTest {
 
     @Rule
