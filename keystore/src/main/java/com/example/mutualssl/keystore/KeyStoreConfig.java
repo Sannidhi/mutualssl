@@ -1,8 +1,5 @@
 package com.example.mutualssl.keystore;
 
-/**
- * Created by sding on 5/14/17.
- */
 public class KeyStoreConfig {
     private String trustStore;
     private String trustStorePass;

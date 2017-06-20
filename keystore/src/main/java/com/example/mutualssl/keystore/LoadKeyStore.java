@@ -1,10 +1,8 @@
 package com.example.mutualssl.keystore;
 
-
 public class LoadKeyStore {
 
     private KeyStoreFactory keyStoreFactory;
-
 
     public static String TRUST_STORE = "TRUST_STORE";
     public static String TRUST_STORE_PASSWORD = "TRUST_STORE_PASSWORD";
@@ -17,9 +15,6 @@ public class LoadKeyStore {
         String backend = System.getenv(BACK_END);
         if ("ENV".equals(backend)){
             keyStoreFactory = new EnvKeyStoreFactory();
-        }
-        else if("VAULT".equals(backend)){
-            keyStoreFactory = new VaultKeyStoreFactory();
         }
         else{
             throw new IllegalArgumentException("BACK_END: " + backend + " is not supported");

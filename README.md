@@ -1,123 +1,119 @@
-## Mutual SSL Solutions
-
-### Demo Concepts
+## Demo Concepts
 
 * One front end Application (client) with /hello endpoint.
 * One Backend application (server) with /hello endpoint.
-* Server has a TCP routes with mutual SSL enabled
+* Server has a TCP route with mutual SSL enabled
 * Client use restTemplate to communicate with server through mutual SSL
-* Using VAULT to store keystores
-* Enable java ssl debug
+* Using environment variables to store keystores
 
-### How to Run
+## Deep Dive
 
-* Have a tcp domain/routes enabled and point the DNS record to tcp load balancer
+ SSL (Secure Sockets Layer) uses a public key in combination with a symmetric
+ key encryption to secure a connection between the server and the client.
 
-```
-Shaozhen-Ding-MacBook-Pro:mutualssl sding$ cf domains
-Getting domains in org test as admin...
-name                              status   type
-cfapps.haas-50.pez.pivotal.io     shared
-mutulssl-server.shaozhenpcf.com   shared   tcp
-```
+### The Handshake
 
-* Generate Certificates
+ 1. The server communicates to the client with a cert that verifies it's
+  legitimacy. The authentication is done with the public key encryption
+  to validate the cert.
+ 2. After the first step is successful, the client and the server establish
+ a shared key which will be used for encryption for all further communication.
+ 3. The client also needs to send its cert every time a new SSL session
+  is established.
 
-  * This script generates client and server keystores, trust-stores and certificates.
+### Client
 
-  * Import client cert to server trust store
-  * Import server cert to client trust store
-  * Place them to src/main/resources folder to client and server projects
-
+* `generate_keystore` script will create the client trust certs which
+ will be placed in the resources folder.
 
 
-```
-generate_keystore.sh [SERVER_DOMAIN] [CLIENT_DOMAIN]
+- how does client send cert to server with request
+- how does the server validate that cert
+- (describe handshake)
+-
 
-E.g ./generate_keystore.sh mutulssl-server.shaozhenpcf.com mutualssl-client.cfapps.haas-50.pez.pivotal.io
-```
+## Steps to run the demo
 
-* Build the project
-
-```
-mvn package
-```
-
-* Configure the backend server on manifest.yml
-
-```
----
-applications:
-- name: mutualssl-client
-  memory: 512M
-  path: client/target/client-0.0.1-SNAPSHOT.jar
-  env:
-    BACKEND_SERVER: https://mutulssl-server.shaozhenpcf.com:5000/hello
-
-```
-
-* Configure the client keystores
-
-  Currently there are *two ways* to inject the client keystores to JVM.
-
-  1. Through environment variables
-
-     ```  
-     applications:
-     - name: mutualssl-client
-       memory: 512M
-       path: client/target/client-0.0.1-SNAPSHOT.jar
-       env:
-         BACKEND_SERVER: https://mutulssl-server.shaozhenpcf.com:5000/hello
-         KEY_STORE: /home/vcap/app/BOOT-INF/classes/client.jks
-         KEY_STORE_PASSWORD: s3cr3t
-         TRUST_STORE: /home/vcap/app/BOOT-INF/classes/client_trust.jks
-         TRUST_STORE_PASSWORD: s3cr3t
-         BACK_END: ENV  
-     ```
-  2. Through VAULT
-
-    **Implementation Details: Load keystore files with base64 encoding to vault. Use Java to grab the keystores, decode, create a temp jks file and load to JVM**
+1. Have tcp domain/routes enabled and point the DNS record to tcp load balancer
 
     ```
-    Using Vault CLI to load key stores
-    ./import_keystore_vault.sh
+    $ cf domains
+    Getting domains in org test as admin...
+    name            status   type
+    cfapps.io       shared
+    cf-tcpapps.io   shared   tcp
+    ```
+
+2. Generate Certificates
+
+ This script generates client and server keystores, trust-stores, certificates and places them in src/main/resources folders
+
+
+    ```
+    generate_keystore.sh [SERVER_DOMAIN] [CLIENT_DOMAIN]
+
+    E.g ./generate_keystore.sh cf-tcpapps.io cfapps.io
+    ```
+
+3.  Build the project
+
+    ```
+    mvn clean package
+    ```
+
+4.  a. Configure the backend server on manifest.yml
+
+    ```
     ---
     applications:
     - name: mutualssl-client
       memory: 512M
       path: client/target/client-0.0.1-SNAPSHOT.jar
       env:
-        BACKEND_SERVER: https://mutulssl-server.shaozhenpcf.com:5000/hello
-        KEY_STORE: jks_store/client
-        KEY_STORE_PASSWORD: secret/client_pass
-        TRUST_STORE: jks_store/client_trust
-        TRUST_STORE_PASSWORD: secret/client_trust_pass
-        BACK_END: VAULT
-        VAULT_SERVER: http://10.193.53.7:8200
-        VAULT_TOKEN: 7c51e5f5-c909-2943-3657-a1c63305f11d
+        BACKEND_SERVER: https://cf-tcpapps.io:3398/hello
     ```
 
-* cf push
+    b. Configure the client keystores
 
-```
-Shaozhen-Ding-MacBook-Pro:mutualssl sding$ cf apps
-Getting apps in org test / space staging as admin...
-OK
+    ```
+    applications:
+    - name: mutualssl-client
+      memory: 512M
+      path: client/target/client-0.0.1-SNAPSHOT.jar
+      env:
+        BACKEND_SERVER: https://cf-tcpapps.io:3398/hello
+        KEY_STORE: /home/vcap/app/BOOT-INF/classes/client.jks
+        KEY_STORE_PASSWORD: s3cr3t
+        TRUST_STORE: /home/vcap/app/BOOT-INF/classes/client_trust.jks
+        TRUST_STORE_PASSWORD: s3cr3t
+        BACK_END: ENV
+    ```
 
-name               requested state   instances   memory   disk   urls
-mutualssl-client   started           1/1         512M     1G     mutualssl-client.cfapps.haas-50.pez.pivotal.io
-mutualssl-server   started           1/1         512M     1G     mutulssl-server.shaozhenpcf.com:5000
-```
+5.  Push both the server and client using cf push. As both the apps are specified in the `manifest.yml` you should not specify app name.
 
-### Verification
+    ```
+    cf push
+    ```
+
+6.  Verify both the apps are running
+
+    ```
+    $ cf apps
+    Getting apps in org test / space staging as admin...
+    OK
+
+    name               requested state   instances   memory   disk   urls
+    mutualssl-client   started           1/1         512M     1G     mutualssl-client.cfapps.io
+    mutualssl-server   started           1/1         512M     1G     cf-tcpapps.io:3398
+    ```
+
+## Verification
 
 * Access client app through browser or curl
 
-```
-https://mutualssl-client.cfapps.haas-50.pez.pivotal.io/hello
-```
-
+    ```
+    https://mutualssl-client.cfapps.io
+    ```
 * It returns the message from the backend server
 
 * Watch the ssl handshake on both client and server side logs

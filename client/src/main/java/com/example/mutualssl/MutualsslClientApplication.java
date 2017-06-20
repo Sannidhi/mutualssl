@@ -13,18 +13,8 @@ public class MutualsslClientApplication {
 		new LoadKeyStore().LoadKeyStore();
 		System.setProperty("javax.net.debug", "ssl");
 		javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier(
-				new javax.net.ssl.HostnameVerifier() {
-
-					public boolean verify(String hostname,
-										  javax.net.ssl.SSLSession sslSession) {
-						if (hostname.equals("localhost")) {
-							return true;
-						}
-						return false;
-					}
-				});
+				(hostname, sslSession) -> hostname.equals("localhost"));
 	}
-
 
 	@Bean
 	RestTemplate restTemplate(){

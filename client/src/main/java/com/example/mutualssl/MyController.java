@@ -7,20 +7,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-
 @RestController
 public class MyController {
-
 
     @Value("${backend.server}")
     private String backendServer;
 
     @Autowired
-    RestTemplate restTemplate;
+    private RestTemplate restTemplate;
 
     @GetMapping("/hello")
     public String sayHello(){
-        ResponseEntity<String> rs =   restTemplate.getForEntity(backendServer, String.class);
-        return rs.toString();
+
+        ResponseEntity<String> response = restTemplate.getForEntity(backendServer, String.class);
+        return response.getBody();
     }
 }

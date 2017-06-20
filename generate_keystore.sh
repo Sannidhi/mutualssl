@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 if [ "$#" -ne 2 ]; then
   echo "generate_keystore.sh [SERVER_DOMAIN] [CLIENT_DOMAIN]"
   exit 1
